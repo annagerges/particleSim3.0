@@ -141,6 +141,7 @@ int main()
             }
             stepCount++;
 
+            //every 10 frames (0.1 seconds) every particle state is logged into csv file for further analysis
             if (stepCount % 10 == 0) {
                 csvDump(particles, file);
             }
