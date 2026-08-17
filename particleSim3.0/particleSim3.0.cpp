@@ -56,7 +56,7 @@ int main()
     }
 
     //sets up random number generator for particle position and velocity
-    uniform_real_distribution<float>randPos(1, 799);
+    uniform_real_distribution<float>randPos(7, 799);
     uniform_real_distribution<float>randVelo(1, 30);
 
     for (int index = 0; index < nP; index++) {

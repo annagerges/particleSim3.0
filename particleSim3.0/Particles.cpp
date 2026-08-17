@@ -14,17 +14,48 @@ const float dt = 0.1f;
 
 //updates position using euclidean approximation
 void updatePos(vector<Particles>& part, Spring& s) {
+	float currentY, currentVy, k1Y, k1Vy, testY2, testVy2, k2Y, k2Vy, testY3, testVy3, k3Y, k3Vy, testY4, testVy4, k4Y, k4Vy, finalY, finalVy;
+
 	for (int index = 0; index < part.size(); index++) {
-		//changes acceleration because the ball is on the spring
-		if (part[index].getY() <= s.getHeight()) {
-			part[index].setA((((s.getK() / part[index].getMass()) * -1) * (part[index].getY() - s.getHeight())) - 9.8);
-		}
-		else {
-			part[index].setA(-9.8);
-		}
-		part[index].setVy(part[index].getVy() + part[index].getA() * 0.01);
-		part[index].setY(part[index].getY() + part[index].getVy() * 0.01);
-		part[index].setX(part[index].getX() + part[index].getVx() * 0.01);
+		//current Y and velocity
+		currentY = part[index].getY();
+		currentVy = part[index].getVy();
+
+		//Slope of postition and velosity respectively
+		k1Y = part[index].getVy();
+		k1Vy = checkAccel(currentY,s,part[index].getMass());
+
+		//predicted y and velocity in 0.05 seconds
+		testY2 = currentY + k1Y * (dt / 2);
+		testVy2 = currentVy + k1Vy * (dt / 2);
+
+		//Slope of postition and velosity respectively
+		k2Y = testVy2;
+		k2Vy= checkAccel(testY2, s, part[index].getMass());
+
+		//predicted y and velocity in 0.05 seconds
+		testY3 = testY2 + k2Y * (dt/2);
+		testVy3 = testVy2 + k2Vy * (dt/2);
+
+		//Slope of postition and velosity respectively
+		k3Y = testVy3;
+		k3Vy= checkAccel(testY3, s, part[index].getMass());
+
+		//predicted y and velocity in 0.1 seconds
+		testY4 = testY3 + k3Y * dt;
+		testVy4 = testVy3 + k3Vy * dt;
+
+		//weighted avg of y and vy to find final values (the midpoint values are twice as accurate as the values at begining and end of time interval)
+		finalY = currentY + (dt / 6) * (k1Y+(2*k2Y)+(2*k3Y)+k4Y);
+		finalVy = currentVy + (dt / 6) * (k1Vy + (2 * k2Vy) + (2 * k3Vy) + k4Vy);
+
+		//accealration is constant so euler approximation is accurate enough
+		part[index].setX(part[index].getX() + part[index].getVx() * dt);
+
+		//set height and vy to final values
+		part[index].setY(finalY);
+		part[index].setVy(finalVy);
+		
 	}
 }
 
