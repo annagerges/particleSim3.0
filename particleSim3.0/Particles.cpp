@@ -149,6 +149,7 @@ void particleCollis(vector<Particles*>& grid) {
 	}
 }
 
+//saves particle state into csv file
 void csvDump(vector<Particles>&part,std::fstream& file) {
 	for (int index = 0; index < part.size(); index++) {
 		file << to_string(index + 1) <<"," << to_string(part[index].getX()) <<"," << to_string(part[index].getY()) <<"," << to_string(part[index].getVx())
