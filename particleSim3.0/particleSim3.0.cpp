@@ -1,5 +1,5 @@
-// Executes particle simulation where a user defined amount of particles (10-100) move around indefinitely. 
-// Uses struct vectors and struct pointer vectors to store partects and use grid based programming. Euclidean approximation is used to simulate movement over a fixed time step.
+// Executes particle simulation where a user defined amount of particles (100-1000) move around indefinitely. 
+// Uses vectors and grid-based spatial partitioning to store particles and optimize collision detection. Euclidean approximation is used to simulate movement over a fixed time step.
 
 #include <iostream>
 #include <vector>
