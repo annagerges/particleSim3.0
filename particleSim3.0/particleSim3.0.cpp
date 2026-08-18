@@ -18,10 +18,8 @@ int main()
 {
     fstream file("particleInfo.csv",ios::out);
 
-    file << "Particle num,x,y,vx,vy,ay,ep,ek,cellRow,cellCol\n";
-
     int nP, row, col, stepCount=0;
-    float accumulator;
+    float accumulator, totalTime=0;
     Spring s;
 
 
@@ -96,8 +94,15 @@ int main()
         grid[row][col].push_back(&particles[index]);
     }
 
-    //set k assuming all of the particles are statically laying on the spring and compressing 0.2m. Mulitply by 5 so that the particles are springy.
+    //set k assuming all of the particles are statically laying on the spring and compressing 0.2m. Mulitply by 4 so that the particles are springy.
     s.setK(((nP * 9.8 * particles[0].getMass()) / 0.2) * 4);
+
+    //writing k and num of particles into the file for it to be analyzed using python but not seen
+    file << "# nP: " << nP << "\n";
+    file << "# k: " << s.getK() << "\n";
+
+    //file rows
+    file << ",Particle num,x,y,vx,vy,ay,cellRow,cellCol,time(s)" << "\n";
 
     //sets accumulator to 0
     accumulator = 0;
@@ -121,12 +126,12 @@ int main()
         accumulator += frameDur.count();
 
         while (accumulator >= dt) {
-
+            totalTime += dt;
             //update position, wall collision checks, and clear and update the grid
             updatePos(particles, s);
 
             //debugging purposes
-            //cout << particles[0].getX() << endl;
+             cout << particles[0].getY() << endl;
 
             wallCollis(particles);
             clearAndFix(particles, grid, width);
@@ -143,7 +148,7 @@ int main()
 
             //every 10 frames (0.1 seconds) every particle state is logged into csv file for further analysis
             if (stepCount % 10 == 0) {
-                csvDump(particles, file);
+                csvDump(particles, file,totalTime);
             }
 
             //decrement accumulator by the timestep

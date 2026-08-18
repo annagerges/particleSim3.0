@@ -15,10 +15,6 @@ private:
 
 	float a = -9.8f;
 
-	float ep;
-	float ek;
-	float em;
-
 	float mass = 0.5f;
 
 	int cellRow;
@@ -79,33 +75,6 @@ public:
 		return mass;
 	}
 
-	//setter and getter ep
-	void setEp(float num) {
-		ep = num;
-	}
-
-	float getEp() const {
-		return ep;
-	}
-
-	//setter and getter ek
-	void setEk(float num) {
-		ek = num;
-	}
-
-	float getEk() const {
-		return ek;
-	}
-
-	//setter and getter em
-	void setEm(float num) {
-		em = num;
-	}
-
-	float getEm() const {
-		return em;
-	}
-
 	//setter and getter for grid coordinates
 
 	void setRow(int r) {
@@ -154,7 +123,8 @@ void updatePos(std::vector<Particles>&, Spring&);
 void wallCollis(std::vector<Particles>&);
 void clearAndFix(std::vector<Particles>&, std::vector<std::vector<std::vector<Particles*>>>&, int);
 void particleCollis(std::vector<Particles*>&);
-void csvDump(std::vector<Particles>&, std::fstream&);
+void csvDump(std::vector<Particles>&, std::fstream&,float);
+float checkAccel(float, Spring&, float);
 
 #endif
 
