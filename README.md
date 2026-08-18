@@ -27,10 +27,41 @@ Multiplied by 4 for strength and springiness
 
 ### Numerical Integration
 
-**Euclidean Approximation** with fixed timestep `dt = 0.1 s`:
+**RK4(Runge-Kutta 4th order) Approximation** with fixed timestep `dt = 0.1 s`:
 ```
-v(t+dt) = v(t) + a(t) × dt
-x(t+dt) = x(t) + v(t) × dt
+		currentY = part[index].getY();
+		currentVy = part[index].getVy();
+
+		//Slope of postition and velosity respectively
+		k1Y = part[index].getVy();
+		k1Vy = checkAccel(currentY,s,part[index].getMass());
+
+		//predicted y and velocity in 0.05 seconds
+		testY2 = currentY + k1Y * (dt / 2);
+		testVy2 = currentVy + k1Vy * (dt / 2);
+
+		//Slope of postition and velosity respectively
+		k2Y = testVy2;
+		k2Vy= checkAccel(testY2, s, part[index].getMass());
+
+		//predicted y and velocity in 0.05 seconds
+		testY3 = testY2 + k2Y * (dt/2);
+		testVy3 = testVy2 + k2Vy * (dt/2);
+
+		//Slope of postition and velosity respectively
+		k3Y = testVy3;
+		k3Vy= checkAccel(testY3, s, part[index].getMass());
+
+		//predicted y and velocity in 0.1 seconds
+		testY4 = testY3 + k3Y * dt;
+		testVy4 = testVy3 + k3Vy * dt;
+
+		k4Y = testVy4;
+		k4Vy = checkAccel(testY4, s, part[index].getMass());
+
+		//weighted avg of y and vy to find final values (the midpoint values are twice as accurate because they provide better estimate of avg slope)
+		finalY = currentY + (dt / 6) * (k1Y+(2*k2Y)+(2*k3Y)+k4Y);
+		finalVy = currentVy + (dt / 6) * (k1Vy + (2 * k2Vy) + (2 * k3Vy) + k4Vy);
 ```
 
 Updates apply at (`0.01 s` intervals) within each frame for stability.
@@ -98,7 +129,6 @@ Ensures consistent physics independent of frame rate or system load.
 
 ## Coming Soon!!
 - **Rendering**: Visualize particles and grid using OpenGL or SDL2.
-- **RK4 Integration**: Replace Euler method with 4th-order Runge–Kutta for higher accuracy.
 - **Damping Coefficient**: Make collision damping configurable; validate energy dissipation against expected mechanical loss.
 - **Spring Stiffness Tuning**: Expose `k` scaling factor as command-line parameter.
 
