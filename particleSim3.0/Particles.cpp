@@ -45,6 +45,9 @@ void updatePos(vector<Particles>& part, Spring& s) {
 		testY4 = testY3 + k3Y * dt;
 		testVy4 = testVy3 + k3Vy * dt;
 
+		k4Y = testVy4;
+		k4Vy = checkAccel(testY4, s, part[index].getMass());
+
 		//weighted avg of y and vy to find final values (the midpoint values are twice as accurate as the values at begining and end of time interval)
 		finalY = currentY + (dt / 6) * (k1Y+(2*k2Y)+(2*k3Y)+k4Y);
 		finalVy = currentVy + (dt / 6) * (k1Vy + (2 * k2Vy) + (2 * k3Vy) + k4Vy);
@@ -119,7 +122,7 @@ void clearAndFix(vector<Particles>& part, vector<vector<vector<Particles*>>>& gr
 		if (r != row || c != col) {
 
 			//for readability and to loop though the grid cell faster use a reference for grid[r][c] instead of recalculating it multiple times 
-			vector<Particles*>oldCell = grid[r][c];
+			vector<Particles*>&oldCell = grid[r][c];
 
 			for (int i = 0; i < oldCell.size(); i++) {
 				if (oldCell[i] == &part[index]) {
@@ -181,10 +184,19 @@ void particleCollis(vector<Particles*>& grid) {
 }
 
 //saves particle state into csv file
-void csvDump(vector<Particles>&part,std::fstream& file) {
+void csvDump(vector<Particles>&part,std::fstream& file,float time) {
 	for (int index = 0; index < part.size(); index++) {
 		file << to_string(index + 1) <<"," << to_string(part[index].getX()) <<"," << to_string(part[index].getY()) <<"," << to_string(part[index].getVx())
-			<< "," << to_string(part[index].getVy()) << "," << to_string(part[index].getA()) << "," << to_string(part[index].getEp()) << ","
-			<< to_string(part[index].getEk()) << "," << to_string(part[index].getRow()) << "," << to_string(part[index].getCol()) << "\n";
+			<< "," << to_string(part[index].getVy()) << "," << to_string(part[index].getA()) << "," << "," << to_string(part[index].getRow()) << "," << to_string(part[index].getCol()) <<", "<<to_string(time)<<"\n";
+	}
+}
+
+//checks accelaration at different points
+float checkAccel(float h, Spring& s, float m) {
+	if (h <= s.getHeight()) {
+		return ((s.getK() / m) * -1) * (h- s.getHeight()) - 9.8;
+	}
+	else {
+		return -9.8f;
 	}
 }
