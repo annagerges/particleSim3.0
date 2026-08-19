@@ -15,11 +15,23 @@ target_particles=[]
 
 num_chosen=0
 
+n_part=0
+
+##lets user pick as many particles to track as they want
+while True:
+    n_part=int(input(f"How many particle trajectories do you want to graph (1-{nP}): "))
+    if(n_part<=0 or n_part>nP):
+        print("Invalid Amount")
+    else:
+        break
+
 #let user pick the particles they want to track 
-while(num_chosen!=3):
+while(num_chosen!=n_part):
     part_id=int(input(f"Chose a particle to track(1-{nP}):"))
     if part_id<=0 or part_id>nP:
         print("Chose an ID from 1-",nP)
+    elif part_id in target_particles:
+        print(f"You already chose that one earlier. Choose a different number.")
     else:
         num_chosen+=1;
         target_particles.append(part_id)
@@ -44,16 +56,19 @@ for _, row in df.iterrows():
             particle_paths[p_id]['y'].append(py)
 
 ###Debugging###
-#print("Columns Pandas found:", df.columns.tolist())
-#print("Data points collected:", {pid: len(coords['x']) for pid, coords in particle_paths.items()})
+##print("Columns Pandas found:", df.columns.tolist())
+##print("Data points collected:", {pid: len(coords['x']) for pid, coords in particle_paths.items()})
 
 
 #create the graph
 plt.figure(figsize=(8,6))
 
-##plot the coordinates of every target particle
-for particle,coords in particle_paths.items():
-    plt.plot(coords['x'],coords['y'],label=f'Particle{particle}',linewidth=1.5)
+# plot only particles that actually have collected data points
+for particle, coords in particle_paths.items():
+    if len(coords['x']) > 0:
+        plt.plot(coords['x'], coords['y'], label=f'Particle {particle}', linewidth=1.5, marker='o', markersize=3)
+    else:
+        print(f"Warning: Particle {particle} was selected, but no valid coordinate data was found in the file.")
 
 plt.title("Sample Particle Trajectories")
 plt.xlabel('X Position(m)')
