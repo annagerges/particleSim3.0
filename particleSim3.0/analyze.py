@@ -14,7 +14,7 @@ with open("particleInfo.csv","r") as f:
 df=pd.read_csv("particleInfo.csv",skiprows=3)
 
 mass=0.5
-g=-9.8
+g=9.8
 
 print(f"Loaded Simulation with {nP} particles. Spring Constant: {k}")
 
