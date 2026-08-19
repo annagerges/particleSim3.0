@@ -70,7 +70,7 @@ Updates apply at (`0.01 s` intervals) within each frame for stability.
 
 ### Spatial Partitioning
 
-The simulation uses a dynamically sized grid(sqrt(num of particles/10)+2) of equal dimentions to reduce collision detection from O(n²) to O(n) for typical particle distributions:
+The simulation uses a dynamically sized grid(sqrt(num of particles/10)+2) of equal dimensions to reduce collision detection from O(n²) to O(n) for typical particle distributions:
 - **Grid cell width**: 800 / cells per row
 - **Collision checks**: Only particles in the same grid cell are tested
 - **Grid update**: partial rebuild if any particles move cells via `clearAndFix()` to update the grid and manage resources effectively.
@@ -93,7 +93,31 @@ This optimization scales efficiently to 1000 particles without performance degra
 - **Energy boost**: Left wall adds `+0.1` to `vx` (if `vx < 30`) to maintain motion without overloading speed.
 
 #### CSV Logging
-Uses fstream C++ library to create a csv file and log the qualities of every particle(besides mechanical energy and mass (automatically 0.5kg to prevent division by 0 errors) for further analysis.
+Uses fstream C++ library to create a csv file and log the qualities of every particle (besides mechanical energy and mass (automatically 0.5kg to prevent division by 0 errors) for further analysis.
+
+#### Python CSV Analysis
+- **Libraries**: Uses matplotlib.pyplot and pandas to create particle trajectory graphs and rk4 energy conservation validation.
+- **Error Handling**: errors='coerce' to safely convert invalid data points to NaN(not a number) without breaking the program and using isna() and continue to exclude any invalid points. Trajectory program prevents users from picking the same particle twice and picking an invalid amount of data points. It only graphs lines with valid data points.
+
+```
+for _, row in df.iterrows():
+    #convert the particle id to a number and safely make it NaN if unsuccessful
+    raw_pid=pd.to_numeric(row['Particle num'],errors='coerce')
+
+    ##if the particle number is a number and is one of the target particles convert the number to an integer, the coordinates to number (with NaN error handling), and append it to the dictionary if the coordinates are numbers
+    if not pd.isna(raw_pid) and int(raw_pid) in target_particles:
+        p_id = int(raw_pid)
+        px=pd.to_numeric(row['x'], errors='coerce')
+        py=pd.to_numeric(row['y'], errors='coerce')
+
+        if not (pd.isna(px) or pd.isna(py)):
+            particle_paths[p_id]['x'].append(px)
+            particle_paths[p_id]['y'].append(py)
+
+```
+
+- **Energy Conservation Validation Graph**: Graphs a line of ideal energy conservation (0% energy drift) compared to rk4 approximation energy drift % with time (Euler approximation line coming soon).
+	
 
 ### Frame Timing
 
