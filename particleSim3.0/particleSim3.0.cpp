@@ -100,9 +100,10 @@ int main()
     //writing k and num of particles into the file for it to be analyzed using python but not seen
     file << "# nP: " << nP << "\n";
     file << "# k: " << s.getK() << "\n";
+    file << "# h: " << s.getHeight() << "\n";
 
     //file rows
-    file << ",Particle num,x,y,vx,vy,ay,cellRow,cellCol,time(s)" << "\n";
+    file << "Particle num,x,y,vx,vy,ay,cellRow,cellCol,time(s)" << "\n";
 
     //sets accumulator to 0
     accumulator = 0;
@@ -131,7 +132,7 @@ int main()
             updatePos(particles, s);
 
             //debugging purposes
-             cout << particles[0].getY() << endl;
+             //cout << particles[0].getY() << endl;
 
             wallCollis(particles);
             clearAndFix(particles, grid, width);
