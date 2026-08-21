@@ -12,7 +12,7 @@
 using namespace std;
 
 //timestep and width of each grid cell
-const float dt = 0.1f;
+const float dt = 0.001f;
 
 int main()
 {
@@ -128,6 +128,7 @@ int main()
 
         while (accumulator >= dt) {
             totalTime += dt;
+
             //update position, wall collision checks, and clear and update the grid
             updatePos(particles, s);
 
