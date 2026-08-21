@@ -53,6 +53,12 @@ int main()
         }
     }
 
+    if (argc > 1) {
+        //set k assuming all of the particles are statically laying on the spring and compressing 0.2m. Mulitply by 4 so that the particles are springy.
+        s.setK(((nP * 9.8 * particles[0].getMass()) / 0.2) * 4);
+        cout << "No argument was entered for k, so it was dynamically allocated to: " << s.getK();
+    }
+
     //sets up random number generator for particle position and velocity
     uniform_real_distribution<float>randPos(7, 799);
     uniform_real_distribution<float>randVelo(1, 30);
