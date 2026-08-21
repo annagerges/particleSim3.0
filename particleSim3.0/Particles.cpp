@@ -37,6 +37,7 @@ void updatePos(vector<Particles>& particles, Spring& s) {
 		// Update
 		p.setY(p.getY() + (dt / 6.0f) * (k1y + 2 * k2y + 2 * k3y + k4y));
 		p.setVy(p.getVy() + (dt / 6.0f) * (k1v + 2 * k2v + 2 * k3v + k4v));
+		p.setX(p.getX() + p.getVx() * dt);
 
 	}
 }
@@ -168,7 +169,7 @@ void particleCollis(vector<Particles*>& grid) {
 void csvDump(vector<Particles>&part,std::fstream& file,float time) {
 	for (int index = 0; index < part.size(); index++) {
 		file << to_string(index + 1) <<"," << to_string(part[index].getX()) <<"," << to_string(part[index].getY()) <<"," << to_string(part[index].getVx())
-			<< "," << to_string(part[index].getVy()) << "," << to_string(part[index].getA()) << "," << "," << to_string(part[index].getRow()) << "," << to_string(part[index].getCol()) <<", "<<to_string(time)<<"\n";
+			<< "," << to_string(part[index].getVy()) << "," << to_string(part[index].getA()) << "," << to_string(part[index].getRow()) << "," << to_string(part[index].getCol()) <<", "<<to_string(time)<<"\n";
 	}
 }
 

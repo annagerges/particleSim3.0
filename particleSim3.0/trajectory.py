@@ -27,9 +27,9 @@ while True:
 
 #let user pick the particles they want to track 
 while(num_chosen!=n_part):
-    part_id=int(input(f"Chose a particle to track(1-{nP}):"))
+    part_id=int(input(f"Choose a particle to track(1-{nP}):"))
     if part_id<=0 or part_id>nP:
-        print("Chose an ID from 1-",nP)
+        print("Choose an ID from 1-",nP)
     elif part_id in target_particles:
         print(f"You already chose that one earlier. Choose a different number.")
     else:
@@ -42,12 +42,17 @@ particle_paths={pid:{'x':[],'y':[]} for pid in target_particles}
 
 ##go through every row
 for _, row in df.iterrows():
-    #convert the particle id to a number and safely make it NaN if unsuccessful
-    raw_pid=pd.to_numeric(row['Particle num'],errors='coerce')
+    #extract particle number
+    raw_pid=row['Particle num']
+
+    try:
+        ##check if particle num is valid and convert it to an integer
+        p_id=int(float(raw_pid))
+    except (ValueError, TypeError):
+        p_id=None
 
     ##if the particle number is a number and is one of the target particles convert the number to an integer, the coordinates to number (with NaN error handling), and append it to the dictionary if the coordinates are numbers
-    if not pd.isna(raw_pid) and int(raw_pid) in target_particles:
-        p_id = int(raw_pid)
+    if p_id is not None and p_id in target_particles:
         px=pd.to_numeric(row['x'], errors='coerce')
         py=pd.to_numeric(row['y'], errors='coerce')
 
@@ -75,6 +80,5 @@ plt.xlabel('X Position(m)')
 plt.ylabel('Y Position(m)')
 plt.legend()
 plt.grid(True)
-
 plt.show()
 
