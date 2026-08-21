@@ -4,88 +4,69 @@
 #include <vector>
 #include <cmath>
 #include <limits>
+#include <algorithm>
 #include <fstream>
 #include<string>
 #include "Particles.h"
 
 using namespace std;
 
-const float dt = 0.1f;
+const float dt = 0.001f;
 
-//updates position using euclidean approximation
-void updatePos(vector<Particles>& part, Spring& s) {
-	float currentY, currentVy, k1Y, k1Vy, testY2, testVy2, k2Y, k2Vy, testY3, testVy3, k3Y, k3Vy, testY4, testVy4, k4Y, k4Vy, finalY, finalVy;
+//updates position using rk4 approximation
+void updatePos(vector<Particles>& particles, Spring& s) {
+	for (auto& p : particles) {
+		// Determine if particle is on spring ONCE at start of step
+		bool onSpring = (p.getY() <= s.getHeight());
 
-	for (int index = 0; index < part.size(); index++) {
-		//current Y and velocity
-		currentY = part[index].getY();
-		currentVy = part[index].getVy();
+		// RK4 stages
+		float k1y = p.getVy();
 
-		//Slope of postition and velosity respectively
-		k1Y = part[index].getVy();
-		k1Vy = checkAccel(currentY,s,part[index].getMass());
+		//if it's on the spring change it's accelaration to k*dy/m-g and if not than keep accelaration to -9.8
+		float k1v = onSpring ? (s.getK() / p.getMass()) * (s.getHeight() - p.getY()) - 9.8f : -9.8f;
 
-		//predicted y and velocity in 0.05 seconds
-		testY2 = currentY + k1Y * (dt / 2);
-		testVy2 = currentVy + k1Vy * (dt / 2);
+		float k2y = p.getVy() + 0.5f * k1v * dt;
+		float k2v = onSpring ? (s.getK() / p.getMass()) * (s.getHeight() - (p.getY() + 0.5f * k1y * dt)) - 9.8f : -9.8f;
 
-		//Slope of postition and velosity respectively
-		k2Y = testVy2;
-		k2Vy= checkAccel(testY2, s, part[index].getMass());
+		float k3y = p.getVy() + 0.5f * k2v * dt;
+		float k3v = onSpring ? (s.getK() / p.getMass()) * (s.getHeight() - (p.getY() + 0.5f * k2y * dt)) - 9.8f : -9.8f;
 
-		//predicted y and velocity in 0.05 seconds
-		testY3 = testY2 + k2Y * (dt/2);
-		testVy3 = testVy2 + k2Vy * (dt/2);
+		float k4y = p.getVy() + k3v * dt;
+		float k4v = onSpring ? (s.getK() / p.getMass()) * (s.getHeight() - (p.getY() + k3y * dt)) - 9.8f : -9.8f;
 
-		//Slope of postition and velosity respectively
-		k3Y = testVy3;
-		k3Vy= checkAccel(testY3, s, part[index].getMass());
+		// Update
+		p.setY(p.getY() + (dt / 6.0f) * (k1y + 2 * k2y + 2 * k3y + k4y));
+		p.setVy(p.getVy() + (dt / 6.0f) * (k1v + 2 * k2v + 2 * k3v + k4v));
 
-		//predicted y and velocity in 0.1 seconds
-		testY4 = testY3 + k3Y * dt;
-		testVy4 = testVy3 + k3Vy * dt;
-
-		k4Y = testVy4;
-		k4Vy = checkAccel(testY4, s, part[index].getMass());
-
-		//weighted avg of y and vy to find final values (the midpoint values are twice as accurate as the values at begining and end of time interval)
-		finalY = currentY + (dt / 6) * (k1Y+(2*k2Y)+(2*k3Y)+k4Y);
-		finalVy = currentVy + (dt / 6) * (k1Vy + (2 * k2Vy) + (2 * k3Vy) + k4Vy);
-
-		//accealration is constant so euler approximation is accurate enough
-		part[index].setX(part[index].getX() + part[index].getVx() * dt);
-
-		//set height and vy to final values
-		part[index].setY(finalY);
-		part[index].setVy(finalVy);
-		
 	}
 }
+
 
 //checks if any of the particles collided with the wall
 void  wallCollis(vector<Particles>& part) {
 	for (int index = 0; index < part.size(); index++) {
 		//if the particle is beyond or colliding with the left edge: reverse its x velocity and change its x position to 1
 		if (part[index].getX() <= 0) {
-			part[index].setVx(part[index].getVx() * -1);
+			part[index].setVx(abs(part[index].getVx()));
 			part[index].setX(1);
 
-			//if the particle's vx is under 30: increase its x velocity 0.1
-			if (part[index].getVx() < 30) {
-				part[index].setVx(part[index].getVx() + 0.1);
-			}
 		}
 
 		//if the particle is beyond or colliding with the right edge: reverse its x velocity and change its x position to 799
 		else if (part[index].getX() >= 800) {
-			part[index].setVx(part[index].getVx() * -1);
+			part[index].setVx(abs(part[index].getVx()) * -1);
 			part[index].setX(799);
 		}
 
 		//if the particle is beyond or colliding with the upper edge: reverse its y velocity and change its y position to 799
 		if (part[index].getY() >= 800) {
-			part[index].setVy(part[index].getVy() * -1);
+			part[index].setVy(abs(part[index].getVy()) * -1);
 			part[index].setY(799);
+		}
+		// if the particle is beyond or colliding with the floor: reverse its y velocity and clamp it
+		else if (part[index].getY() <= 1) {
+			part[index].setVy(abs(part[index].getVy()));
+			part[index].setY(1);
 		}
 	}
 }
@@ -150,33 +131,33 @@ void particleCollis(vector<Particles*>& grid) {
 		for (int index = start + 1; index < grid.size(); index++) {
 
 			//compute dy and dx to figure out if they collided on x or y axis
-			dy = abs(grid[index]->getY() - grid[start]->getY());
-			dx = abs(grid[index]->getX() - grid[start]->getX());
+			dy = grid[index]->getY() - grid[start]->getY();
+			dx = grid[index]->getX() - grid[start]->getX();
+
+			//absolute distance
+			float absDx = abs(dx);
+			float absDy = abs(dy);
 
 			//if distance^2 is less than the particle radius^2: then they collided. Using squared to budget cpu resources and be accurate at the same time
-			if (dx * dx + dy * dy < 100) {
+			if (absDx * absDx + absDy * absDy < 100) {
 
-				//if they collided on y axis
-				if (dx >= dy) {
-					//if the second particle is higher then the first one
-					if (grid[index]->getY() >= grid[start]->getY()) {
+				// Calculate relative velocity
+				float dvx = grid[index]->getVx() - grid[start]->getVx();
+				float dvy = grid[index]->getVy() - grid[start]->getVy();
 
-						//increase the lower particle's vy by 0.1 if its vy is less than 30, reverse vy of the higher one and slow it down on y axis by 0.1
-						grid[start]->setVy(grid[start]->getVy() + (grid[start]->getVy() < 30) ? 0.1 : 0);
-						grid[index]->setVy(grid[index]->getVy() * -1);
-						grid[index]->setVy(grid[index]->getVy() - 0.1);
+				//only swap velo if they are moving towards eachother. Determines if they are pointing to eachother and acts accordingly
+				if (dx * dvx + dy * dvy < 0) {
+
+					if (absDx <= absDy) {
+						float tempVy = grid[start]->getVy();
+						grid[start]->setVy(grid[index]->getVy());
+						grid[index]->setVy(tempVy);
 					}
 					else {
-						//increase the lower particle's vy by 0.1 if its vy is less than 30, reverse vy of the higher one and slow it down on y axis by 0.1
-						grid[index]->setVy(grid[index]->getVy() + (grid[index]->getVy() < 30) ? 0.1 : 0);
-						grid[start]->setVy(grid[start]->getVy() * -1);
-						grid[start]->setVy(grid[start]->getVy() - 0.1);
+						float tempVx = grid[start]->getVx();
+						grid[start]->setVx(grid[index]->getVx());
+						grid[index]->setVx(tempVx);
 					}
-				}
-				// if it collided on the x axis: reverse the vx of both particles
-				else {
-					grid[start]->setVx(grid[start]->getVx() * -1);
-					grid[index]->setVx(grid[index]->getVx() * -1);
 				}
 			}
 		}
@@ -192,9 +173,10 @@ void csvDump(vector<Particles>&part,std::fstream& file,float time) {
 }
 
 //checks accelaration at different points
+//checks accelaration at different points
 float checkAccel(float h, Spring& s, float m) {
-	if (h <= s.getHeight()) {
-		return ((s.getK() / m) * -1) * (h- s.getHeight()) - 9.8;
+	if (h <= s.getHeight()){
+		return (s.getK() / m) * (s.getHeight() - h) - 9.8f;
 	}
 	else {
 		return -9.8f;
