@@ -8,7 +8,7 @@ A C++ simulation modeling gravitational and spring forces on particles in 2D spa
 
 This project simulates a system of 100–1000 particles affected by gravity and spring forces, with particle-to-particle and wall collisions. The simulation uses:
 
-- **RK4 integration** for <0.1% energy drift
+- **RK4 integration** for <0.1% energy drift and increase in accuracy compared to Euler integration
 - **Spatial partitioning grid** to reduce collision detection from O(n²) to O(n)
 - **CSV export** for post-simulation analysis and validation
 - **Python validation plots** to visualize energy conservation
@@ -28,12 +28,13 @@ a = -g = -9.8 m/s²
 **Spring Force (when y ≤ spring height)**:
 
 ```
-F_spring = -k(y - h)
-a_total = -(k/m)(y - h) - g
+F_spring = k(y - h)
+a_total = (k/m)(y - h) - g
 acceleration is the force of the spring/mass minus gravity
 
-The spring stiffness `k` is dynamically calculated to support all particles at equilibrium compression (0.2 m):
-k = (nP × 9.8 × m / 0.2) × 4
+The spring stiffness `k` is scalable as a cmd line parameter but if no arguments are provided it is 
+dynamically calculated to support a particle at equilibrium compression (0.2 m) where m is the mass per particle:
+k = ( 9.8 × m / 0.2) × 4
 
 Factor of 4 increases springiness and creates a responsive force.
 ```
@@ -43,35 +44,27 @@ Factor of 4 increases springiness and creates a responsive force.
 **RK4 (Runge-Kutta 4th Order)** with fixed timestep `dt = 0.1 s`. Computes four slope estimates (k1–k4) and combines them with weights (1:2:2:1) to approximate the solution:
 
 ```cpp
-// RK4 update for a single particle's position and velocity
-currentY = part[index].getY();
-currentVy = part[index].getVy();
+		// Determine if particle is on spring once at start of step
+		bool onSpring = (p.getY() <= s.getHeight());
 
-// First slope: current velocity and acceleration
-k1Y = part[index].getVy();
-k1Vy = checkAccel(currentY, s, part[index].getMass());
+		// RK4 stages
+		float k1y = p.getVy();
 
-// Second slope: state at t + dt/2
-testY2 = currentY + k1Y * (dt / 2);
-testVy2 = currentVy + k1Vy * (dt / 2);
-k2Y = testVy2;
-k2Vy = checkAccel(testY2, s, part[index].getMass());
+		//if it's on the spring change it's accelaration to k*dy/m-g and if not than keep accelaration to -9.8
+		float k1v = onSpring ? (s.getK() / p.getMass()) * (s.getHeight() - p.getY()) - 9.8f : -9.8f;
 
-// Third slope: state at t + dt/2 (refined estimate)
-testY3 = currentY + k2Y * (dt / 2);
-testVy3 = currentVy + k2Vy * (dt / 2);
-k3Y = testVy3;
-k3Vy = checkAccel(testY3, s, part[index].getMass());
+		float k2y = p.getVy() + 0.5f * k1v * dt;
+		float k2v = onSpring ? (s.getK() / p.getMass()) * (s.getHeight() - (p.getY() + 0.5f * k1y * dt)) - 9.8f : -9.8f;
 
-// Fourth slope: state at t + dt
-testY4 = currentY + k3Y * dt;
-testVy4 = currentVy + k3Vy * dt;
-k4Y = testVy4;
-k4Vy = checkAccel(testY4, s, part[index].getMass());
+		float k3y = p.getVy() + 0.5f * k2v * dt;
+		float k3v = onSpring ? (s.getK() / p.getMass()) * (s.getHeight() - (p.getY() + 0.5f * k2y * dt)) - 9.8f : -9.8f;
 
-// Weighted average of slopes (midpoint estimates have weight 2)
-finalY = currentY + (dt / 6) * (k1Y + 2*k2Y + 2*k3Y + k4Y);
-finalVy = currentVy + (dt / 6) * (k1Vy + 2*k2Vy + 2*k3Vy + k4Vy);
+		float k4y = p.getVy() + k3v * dt;
+		float k4v = onSpring ? (s.getK() / p.getMass()) * (s.getHeight() - (p.getY() + k3y * dt)) - 9.8f : -9.8f;
+
+		// Update to a weighted avg of every slope
+		p.setY(p.getY() + (dt / 6.0f) * (k1y + 2 * k2y + 2 * k3y + k4y));
+		p.setVy(p.getVy() + (dt / 6.0f) * (k1v + 2 * k2v + 2 * k3v + k4v));
 
 ```
 Updates apply at (`0.01 s` intervals) within each frame for stability. Rk4 achieves <0.1% energy drift over long simulations compared to the approximately 2% drift with Euler integration.
@@ -91,43 +84,51 @@ This optimization scales efficiently to 1000 particles without performance degra
 ### Collision Detection
 
 #### Particle–Particle Collisions
-- **Trigger**: Euclidean distance `d < 10` units (center to center. Radius of 5 per particle)
-- **Axis determination**: Compare `dx` vs. `dy` to resolve collision along correct axis
+- **Trigger**: Euclidean distance `absDx * absDx + absDy * absDy < 100` units (r^2) (are the particles overlapping?)
+- **Axis determination**: Compare `|dx|` vs. `|dy|` to resolve collision along correct axis
 	- **Response**:
-	  - **Y-axis collision**: Reverse `vy`, apply damping (−0.1), boost lower particle if `vy < 30`
-	  - **X-axis collision**: Reverse `vx` for both particles
+	  - **Y-axis collision**: Swap vy for energy conservation
+	  - **X-axis collision**: Swap vx for energy conservation
 	  - **If X and Y axis are equal**: apply Y-axis collision conditions.
 
 #### Wall Collisions
 - **Bounds**: `y values are from 6-max height and x values are from 0-max height (non-inclusive)`
 - **Response**: Reverse normal velocity component, clamp position to boundary
-- **Energy Injection**: Left wall adds `+0.1` to `vx` (if `vx < 30`) to counteract dampening and maintain motion. Prevents particles from stalling.
 
-#### CSV Logging
+## CSV Logging
 Uses fstream C++ library to create a csv file and log the qualities of every particle (besides mechanical energy and mass (automatically 0.5kg to prevent division by 0 errors) for further analysis.
 
 #### Python CSV Analysis
-- **Method**: Reads CSV, computes kinetic, gravitational potential, and potential spring energy. Plots energy drift % over time.
+- **Method**: Reads CSV, computes kinetic, gravitational potential, and potential spring energy. Plots energy drift % over time. Also let's user choose how many particle trajectories they want to view.
 - **Result**: RK4 method has <0.1% energy drift and demonstrates numerical stability
+- **Energy Conservation(Make sure 2.0 and 3.0 have same number of particle and K)**: ![Energy Conservation Demo](EnergyConservation.png)
+- **Particle Trajectories**: ![Particle Trajectory Demo](Trajectory.png)
+  
+  
 
-#### CSV Error Handling
+## CSV Error Handling
 Safely processes invalid data during analysis
 
 ```
+##go through every row
 for _, row in df.iterrows():
-    # Convert particle ID; invalid entries become NaN
-    raw\_pid = pd.to\_numeric(row['Particle num'], errors='coerce')
-    
-    # Only process valid particle IDs in target set
-    if not pd.isna(raw\_pid) and int(raw\_pid) in target\_particles:
-        p\_id = int(raw\_pid)
-        px = pd.to\_numeric(row['x'], errors='coerce')
-        py = pd.to\_numeric(row['y'], errors='coerce')
-        
-        # Skip invalid coordinates
+    #extract particle number
+    raw_pid=row['Particle num']
+
+    try:
+        ##check if particle num is valid and convert it to an integer
+        p_id=int(float(raw_pid))
+    except (ValueError, TypeError):
+        p_id=None
+
+    ##if the particle number is a number and is one of the target particles convert the number to an integer, the coordinates to number (with NaN error handling), and append it to the dictionary if the coordinates are numbers
+    if p_id is not None and p_id in target_particles:
+        px=pd.to_numeric(row['x'], errors='coerce')
+        py=pd.to_numeric(row['y'], errors='coerce')
+
         if not (pd.isna(px) or pd.isna(py)):
-            particle\_paths[p\_id]['x'].append(px)
-            particle\_paths[p\_id]['y'].append(py)
+            particle_paths[p_id]['x'].append(px)
+            particle_paths[p_id]['y'].append(py)
 ```
 Prevents crashes and excludes invalid data.
 	
@@ -171,9 +172,7 @@ Ensures consistent physics independent of frame rate or system load.
 
 
 ## Coming Soon!!
-- **Damping Coefficient**: Make collision damping configurable; validate energy dissipation against expected mechanical loss.
 - **Spring Stiffness Tuning**: Expose `k` scaling factor as command-line parameter.
-- **And More!!**
 
 
 ---
