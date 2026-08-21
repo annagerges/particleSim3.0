@@ -16,7 +16,7 @@ const float dt = 0.001f;
 //updates position using rk4 approximation
 void updatePos(vector<Particles>& particles, Spring& s) {
 	for (auto& p : particles) {
-		// Determine if particle is on spring ONCE at start of step
+		// Determine if particle is on spring once at start of step
 		bool onSpring = (p.getY() <= s.getHeight());
 
 		// RK4 stages
