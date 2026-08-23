@@ -164,7 +164,21 @@ Ensures consistent physics independent of frame rate or system load.
 | `clearAndFix()` | `void(vector<Particles>&, vector<vector<vector<Particles*>>>&, int width)` | Clears and puts any particle that moves cells in accordance to it's current position while maintaining O(1) time|
 | `csvDump()` | `void csvDump(std::vector<Particles>&, std::fstream&);` | Logs particle state into csv file for futher analysis|
 
-### Building and Running
+### Spring Stiffness Tuning
+In cmd line the user can set k to a desired number if they would like.
+
+If user enters more than 1 argument or a less than or equal to 0, k will be dynamically calculated instead as to not break the simulation entirely.
+```
+    if (argc > 1) {
+        //set k assuming all of the particles are statically laying on the spring and compressing 0.2m. Mulitply by 4 so that the particles are springy.
+        s.setK(((nP * 9.8 * particles[0].getMass()) / 0.2) * 4);
+        cout << "No argument was entered for k, so it was dynamically allocated to: " << s.getK();
+    }
+    else if (argc >= 0) {
+        s.setK(((nP * 9.8 * particles[0].getMass()) / 0.2) * 4);
+        cout << "This argument is an invalid number and k will by dynamically allocated instead";
+    }
+```
 
 #### Requirements
 - **C++**: C++11 or later
@@ -172,8 +186,10 @@ Ensures consistent physics independent of frame rate or system load.
 
 
 ## Coming Soon!!
-- **Spring Stiffness Tuning**: Expose `k` scaling factor as command-line parameter.
-
+- **Rendering**
+- **Spatial Partitioning**: Quadtree or Hash grid
+- **Performance benchmarking**: Analyzing time complexity
+- **Damping and Spring Stiffness CMD line Parameters**
 
 ---
 
