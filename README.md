@@ -9,7 +9,7 @@ A C++ simulation modeling gravitational and spring forces on particles in 2D spa
 This project simulates a system of 100–1000 particles affected by gravity and spring forces, with particle-to-particle and wall collisions. The simulation uses:
 
 - **RK4 integration** for <0.1% energy drift and increase in accuracy compared to Euler integration
-- **Spatial partitioning grid** to reduce collision detection from O(n²) to O(n)
+- **Spatial partitioning hashmap** to reduce collision detection from O(n²) to O(n)
 - **CSV export** for post-simulation analysis and validation
 - **Python validation plots** to visualize energy conservation
 
@@ -77,7 +77,8 @@ The simulation uses a dynamically sized to reduce collision detection from O(n²
 -**Grid Sizing**: Width and height are the maximum between 3 and  grid(sqrt(num of particles/10)+2)
 - **Grid cell width**: 800 / cells per row
 - **Collision checks**: Only particles in the same grid cell are tested
-- **Grid update**: partial rebuild if any particles move cells via `clearAndFix()` to update the grid and manage resources effectively.
+- **Grid update**: `fix()` partial rebuild if any particles move cells to update the simulation while managing resources
+- **Multiplier**: Creates a unique key using (row*cellsPerGrid)+cell
 
 This optimization scales efficiently to 1000 particles without performance degradation.
 
@@ -160,23 +161,38 @@ Ensures consistent physics independent of frame rate or system load.
 |----------|-----------|---------|
 | `updatePos()` | `void(vector<Particles>&, Spring&)` | Apply forces, update velocity and position |
 | `wallCollis()` | `void(vector<Particles>&)` | Handle boundary collisions |
-| `particleCollis()` | `void(vector<Particles*>&)` | Detect and resolve particle–particle collisions within grid cells with more than 1 particle |
-| `clearAndFix()` | `void(vector<Particles>&, vector<vector<vector<Particles*>>>&, int width)` | Clears and puts any particle that moves cells in accordance to it's current position while maintaining O(1) time|
+| `particleCollis()` | `void(std::unordered_map<int, std::vector<Particles*>>&)` | Detect and resolve particle–particle collisions within grid cells with more than 1 particle |
+| `fix()` | `void(std::vector<Particles>&, std::unordered_map<int, std::vector<Particles*>>&, int, int)` | Clears and puts any particle that moves cells in accordance to it's current position while maintaining O(1) time|
 | `csvDump()` | `void csvDump(std::vector<Particles>&, std::fstream&);` | Logs particle state into csv file for futher analysis|
 
 ### Spring Stiffness Tuning
 In cmd line the user can set k to a desired number if they would like.
 
-If user enters more than 1 argument or a less than or equal to 0, k will be dynamically calculated instead as to not break the simulation entirely.
+If user enters too many arguments, k will be dynamically calculated instead as to not break the simulation entirely. If the argument is too small or not enough arguments were entered, the program will let the user know and terminate.
 ```
-    if (argc > 1) {
+    if (argc > 2) {
         //set k assuming all of the particles are statically laying on the spring and compressing 0.2m. Mulitply by 4 so that the particles are springy.
         s.setK(((nP * 9.8 * particles[0].getMass()) / 0.2) * 4);
-        cout << "No argument was entered for k, so it was dynamically allocated to: " << s.getK();
+        cout << "Too many arguments entered, so k was dynamically allocated to: " << s.getK();
     }
-    else if (argc >= 0) {
-        s.setK(((nP * 9.8 * particles[0].getMass()) / 0.2) * 4);
-        cout << "This argument is an invalid number and k will by dynamically allocated instead";
+    else if (argc == 2) {
+        double k = stof(argv[1]);
+        if (k <=0) {
+            cout << "INVALID ARGUMENT. K is too small.";
+            return 1;
+        }
+        else {
+            //customize k
+            s.setK(k);
+        }
+
+
+        cout << "Argument detected! k dynamically allocated to: " << s.getK() << "\n";
+    }
+    else {
+        // If they clicked the normal VS button (argc == 1) or passed too many arguments (argc > 2)
+        cout << "Error: You must provide a command-line argument to run this simulation.\n";
+        return 1;
     }
 ```
 
@@ -187,7 +203,6 @@ If user enters more than 1 argument or a less than or equal to 0, k will be dyna
 
 ## Coming Soon!!
 - **Rendering**
-- **Spatial Partitioning**: Quadtree or Hash grid
 - **Performance benchmarking**: Analyzing time complexity
 - **Damping and Spring Stiffness CMD line Parameters**
 
