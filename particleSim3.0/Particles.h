@@ -3,6 +3,7 @@
 
 #include<vector>
 #include <fstream>
+#include <unordered_map>
 
 //Particle class to keep track of every particle's position, velocity, acceleration, and energy
 class Particles {
@@ -121,8 +122,8 @@ public:
 //functions
 void updatePos(std::vector<Particles>&, Spring&);
 void wallCollis(std::vector<Particles>&);
-void clearAndFix(std::vector<Particles>&, std::vector<std::vector<std::vector<Particles*>>>&, int);
-void particleCollis(std::vector<Particles*>&);
+void fix(std::vector<Particles>&, std::unordered_map<int, std::vector<Particles*>>&, int, int);
+void particleCollis(std::unordered_map<int, std::vector<Particles*>>&);
 void csvDump(std::vector<Particles>&, std::fstream&,float);
 float checkAccel(float, Spring&, float);
 

@@ -1,12 +1,13 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-##get particle number, k constant, and height of spring (assume that nP, k, and h are the same for rk4 and Eueler)
+##get particle number, k constant, and height of spring (assume that nP, k, and h are the same for rk4 and Euler)
 with open("particleInfo.csv","r") as f:
     nP_line=f.readline()
     k_line=f.readline()
     h_line=f.readline()
 
+    #get number of particles, k, and h
     nP=int(nP_line.split(":")[1].strip())
     k=float(k_line.split(":")[1].strip())
     h=float(h_line.split(":")[1].strip())
@@ -124,7 +125,7 @@ plt.figure(figsize=(9,5))
 
 ##plot the time and drift percent for Rk4 and Euler
 plt.plot(energy_df['time'],energy_df['drift_percent'],color='green',linewidth=1.5,label='RK4 Energy Drift')
-plt.plot(energy_df2['time'],energy_df2['drift_percent'],color='blue',linewidth=1.5,label='Eueler Energy Drift')
+plt.plot(energy_df2['time'],energy_df2['drift_percent'],color='blue',linewidth=1.5,label='Euler Energy Drift')
 
 
 plt.title("Particle System Energy Conservation Validation Over Time")

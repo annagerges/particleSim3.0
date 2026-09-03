@@ -1,5 +1,5 @@
 // Executes particle simulation where a user defined amount of particles (100-1000) move around indefinitely. 
-// Uses vectors and grid-based spatial partitioning to store particles and optimize collision detection. Euclidean approximation is used to simulate movement over a fixed time step.
+// Uses vectors and hashmap based spatial partitioning to store particles and optimize collision detection. Euclidean approximation is used to simulate movement over a fixed time step.
 
 #include <iostream>
 #include <vector>
@@ -7,18 +7,19 @@
 #include <random>
 #include <limits>
 #include <fstream>
+#include <unordered_map>
 #include "Particles.h"
 
 using namespace std;
 
-//timestep and width of each grid cell
+//timestep
 const float dt = 0.001f;
 
-int main()
+int main(int argc, char* argv[])
 {
     fstream file("particleInfo.csv",ios::out);
 
-    int nP, row, col, stepCount=0;
+    int nP, row, col, stepCount=0, cellKey;
     float accumulator, totalTime=0;
     Spring s;
 
@@ -37,38 +38,16 @@ int main()
         cin >> nP;
     }
 
-
     //creates a vector of particles with the valid size the user specified to keep track of every particle
-    vector<Particles>particles;
-    particles.reserve(nP);
-
-    //the grid (3d vector of Particle pointers) to optimize the program
-    vector<vector<vector<Particles*>>>grid(nBox, vector<vector<Particles*>>(nBox));
-
-    // Pre-reserve space in each grid cell to avoid reallocations
-    int estimatedPerCell = nP / (nBox * nBox) + 2;  // +2 for buffer
-    for (int i = 0; i < nBox; i++) {
-        for (int j = 0; j < nBox; j++) {
-            grid[i][j].reserve(estimatedPerCell);
-        }
-    }
-
-    if (argc > 1) {
-        //set k assuming all of the particles are statically laying on the spring and compressing 0.2m. Mulitply by 4 so that the particles are springy.
-        s.setK(((nP * 9.8 * particles[0].getMass()) / 0.2) * 4);
-        cout << "No argument was entered for k, so it was dynamically allocated to: " << s.getK();
-    }
-    else if (argc >= 0) {
-        s.setK(((nP * 9.8 * particles[0].getMass()) / 0.2) * 4);
-        cout << "This argument is an invalid number and k will by dynamically allocated instead";
-    }
+    vector<Particles>particles(nP);
 
     //sets up random number generator for particle position and velocity
     uniform_real_distribution<float>randPos(7, 799);
     uniform_real_distribution<float>randVelo(1, 30);
 
+    unordered_map <int, vector<Particles*>> hash;
+
     for (int index = 0; index < nP; index++) {
-        particles.emplace_back();
 
         //Randomly assigns x and y to be from 1 to 799 because having the user decide would be tedious
         particles[index].setX(randPos(myEngine));
@@ -78,35 +57,62 @@ int main()
         particles[index].setVx(randVelo(myEngine));
         particles[index].setVy(randVelo(myEngine));
 
-        //finds grid cell based on particle position
+        //finds cell coordinates based on particle position
         row = particles[index].getY() / width;
         col = particles[index].getX() / width;
-
-        int nR = grid.size(), nC = grid[0].size();
 
         if (row < 0) {
             row = 0;
         }
-        else if (row >= nR) {
-            row = nR - 1;
+        else if (row >= nBox) {
+            row = nBox - 1;
         }
         if (col < 0) {
             col = 0;
         }
-        else if (col >= nC) {
-            col = nC - 1;
+        else if (col >= nBox) {
+            col = nBox - 1;
         }
 
         particles[index].setRow(row);
         particles[index].setCol(col);
 
-        //puts the particle in the cell
-        grid[row][col].push_back(&particles[index]);
+        //cell (any paritcle w same row and col will have the same cell key)
+        cellKey = (row * nBox) + col;
+
+        hash[cellKey].push_back(&particles[index]);
+
     }
 
-    //set k assuming all of the particles are statically laying on the spring and compressing 0.2m. Mulitply by 4 so that the particles are springy.
-    s.setK(((nP * 9.8 * particles[0].getMass()) / 0.2) * 4);
+    
+    if (argc > 2) {
+        //set k assuming all of the particles are statically laying on the spring and compressing 0.2m. Mulitply by 4 so that the particles are springy.
+        s.setK(((nP * 9.8 * particles[0].getMass()) / 0.2) * 4);
+        cout << "Too many arguments entered, so k was dynamically allocated to: " << s.getK();
+    }
+    else if (argc == 2) {
+        double k = stof(argv[1]);
+        if (k <=0) {
+            cout << "INVALID ARGUMENT. K is too small.";
+            return 1;
+        }
+        else {
+            //customize k
+            s.setK(k);
+        }
 
+
+        cout << "Argument detected! k dynamically allocated to: " << s.getK() << "\n";
+    }
+    else {
+        // If they clicked the normal VS button (argc == 1) or passed too many arguments (argc > 2)
+        cout << "Error: You must provide a command-line argument to run this simulation.\n";
+        return 1;
+    }
+
+    //to run the program locally
+    //s.setK(((nP * 9.8 * particles[0].getMass()) / 0.2) * 4);
+    
     //writing k and num of particles into the file for it to be analyzed using python but not seen
     file << "# nP: " << nP << "\n";
     file << "# k: " << s.getK() << "\n";
@@ -139,23 +145,17 @@ int main()
         while (accumulator >= dt) {
             totalTime += dt;
 
-            //update position, wall collision checks, and clear and update the grid
+            //update position, wall collision checks, and clear and update the hashmap 
             updatePos(particles, s);
 
             //debugging purposes
              //cout << particles[0].getY() << endl;
 
             wallCollis(particles);
-            clearAndFix(particles, grid, width);
+            hash.clear();
+            fix(particles, hash, width, nBox);
+            particleCollis(hash);
 
-            for (int row = 0; row < grid.size(); row++) {
-                for (int col = 0; col < grid[0].size(); col++) {
-                    //if a grid cell has more then 1 particle (is active) then check if they are colliding
-                    if (grid[row][col].size() > 1) {
-                        particleCollis(grid[row][col]);
-                    }
-                }
-            }
             stepCount++;
 
             //every 10 frames (0.1 seconds) every particle state is logged into csv file for further analysis
