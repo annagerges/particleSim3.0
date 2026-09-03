@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-##get particle number, k constant, and height of spring (assume that nP, k, and h are the same for rk4 and Euler)
+##get particle number, k constant, and height of spring assume that (nP, k, and h are the same for rk4 and Euler)
 with open("particleInfo.csv","r") as f:
     nP_line=f.readline()
     k_line=f.readline()
